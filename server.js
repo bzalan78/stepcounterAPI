@@ -14,6 +14,7 @@ var pool = mysql.createPool({
 
 })
 app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
 
 app.get('/', (_req, res) => {
   res.send('Welcome to the step counter API')
@@ -33,8 +34,8 @@ app.post('/users/register', (req, res) => {
     if(password !== confirm) {
       return res.status(400).json({ error: 'Passwords do not match' })
     }
-    //check passwd strength
-
+    
+    //TODO: implement password strength check
     //check if email already exists
     pool.query('SELECT * FROM users WHERE email = ?', [email], (error, results) => {
         if (error) {
@@ -44,7 +45,7 @@ app.post('/users/register', (req, res) => {
             return res.status(400).json({ error: 'Email already exists' })
         }
         //register user
-        pool.query('INSERT INTO users (name, password, email) VALUES (?, ?, ?)', [name, password, email], (error, results) => {
+        pool.query('INSERT INTO users (name, password, email, role) VALUES (?, SHA1(?), ? ,"user")', [name, password, email], (error, results) => {
             if (error) {
                 return res.status(500).json({ error: 'Internal server error' })
             }
@@ -55,6 +56,39 @@ app.post('/users/register', (req, res) => {
 })
 
 //login
+app.post('/users/login', (req, res) => {
+    const { email, password } = req.body
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' })
+    }
+    pool.query('SELECT * FROM users WHERE email = ? AND password =SHA1(?)', [email, password], (error, results) => {
+      console.log(results)  
+      if (error) {
+            return res.status(500).json({ error: 'Internal server error' })
+        }
+        if (results.length == 0) {
+            return res.status(400).json({ error: 'Invalid credentials' })
+        }
+        //check user is active?
+        if (results[0].is_active == 0) {
+            return res.status(400).json({ error: 'User is not active' })
+        }
+        // update last login and login_count fields timestamp
+        const loggedUser={
+            ID: results[0].ID,
+            name: results[0].name,
+            email: results[0].email,
+            role: results[0].role
+        }
+        pool.query('UPDATE users SET last_login = CURRENT_TIMESTAMP, login_count = login_count + 1 WHERE ID = ?', [loggedUser.ID], (error, results) => {
+            if (error) {
+                return res.status(500).json({ error: 'Internal server error' })
+            }
+            //TODO: send logged in data to frontend
+            res.status(200).json({ message: 'Login successful', loggedUser})
+        })
+    })
+})
 
 //logout ?
 
