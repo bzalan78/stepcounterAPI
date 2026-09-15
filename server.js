@@ -84,7 +84,7 @@ app.post('/users/login', (req, res) => {
             if (error) {
                 return res.status(500).json({ error: 'Internal server error' })
             }
-            //TODO: send logged in data to frontend
+            // send logged in data to frontend
             res.status(200).json({ message: 'Login successful', loggedUser})
         })
     })
