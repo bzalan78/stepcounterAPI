@@ -1,6 +1,6 @@
 const express =require('express')
 const mysql = require('mysql')
-
+const sha1 = require('sha1')
 const app = express()
 const port = 3000
 
@@ -35,7 +35,7 @@ app.post('/users/register', (req, res) => {
       return res.status(400).json({ error: 'Passwords do not match' })
     }
     
-    //TODO: implement password strength check
+    // implement password strength check
     //check if email already exists
     pool.query('SELECT * FROM users WHERE email = ?', [email], (error, results) => {
         if (error) {
@@ -90,9 +90,52 @@ app.post('/users/login', (req, res) => {
     })
 })
 
-//logout ?
+//logout ? nem kell backend endpoint
 
 //password change
+app.post('/users/:uid/passmod', (req, res) => {
+  const { oldpass,newpass,confirm } = req.body
+  const uid=req.params.uid
+  if (!oldpass || !newpass || !confirm) {
+    return res.status(400).json({ error: 'All fields are required' })
+  }
+  if (newpass != confirm) {
+    return res.status(400).json({ error: 'Passwords do not match' })
+  }
+  if (newpass == oldpass) {
+    return res.status(400).json({ error: 'New password must be different from old password' })
+  }
+  // new password strength check
+  pool.query('SELECT password FROM users WHERE ID=?', [uid], (error, results) => {
+    console.log(results)
+    if (error) {
+      return res.status(500).json({ error });
+    }
+    
+    if (results.length === 0) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+    
+    const oldpassHash = sha1(oldpass);
+    
+    console.log(oldpassHash);
+    
+    if (results[0].password != oldpassHash) {
+      return res.status(400).json({ error: 'Old password is incorrect' });
+    }
+    
+    // update password
+    pool.query('UPDATE users SET password=SHA1(?) WHERE ID=?', [newpass, uid], (error, results) => {
+      if (error) {
+        return res.status(500).json({ error: 'Database query error' });
+      }
+      
+      
+      return res.status(200).json({ message: 'Password changed successfully' });
+    });
+  });
+})
+
 
 //get profile
 
