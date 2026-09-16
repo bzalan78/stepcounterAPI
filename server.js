@@ -1,6 +1,7 @@
 const express =require('express')
 const mysql = require('mysql')
 const sha1 = require('sha1')
+var cors= require('cors')
 const app = express()
 const port = 3000
 
@@ -13,6 +14,7 @@ var pool = mysql.createPool({
   database: 'stepcounter'
 
 })
+app.use(cors())
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 
