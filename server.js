@@ -140,10 +140,55 @@ app.post('/users/:uid/passmod', (req, res) => {
 
 
 //get profile
+app.get('/users/:uid', (req, res) => {
+  const uid=req.params.uid
+  if (!uid) {
+    return res.status(400).json({ error: 'User ID is required' })
+  }
+  pool.query('SELECT * FROM users WHERE ID = ?', [uid], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: 'Database query error' })
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'User not found' })
+    }
 
+    let user={ 
+    "name": results[0].name,
+    "email": results[0].email,
+    "role": results[0].role,
+    "created_at": results[0].created_at
+    
+    
+   
+    }
+    // return user profile data
+    res.status(200).json({ results: user })
+  })
+})
 //update profile
 
 //delete profile
+app.delete('/users/:uid', (req, res) => {
+  const uid=req.params.uid
+  const loggedUserId=req.body.luid
+  if (!uid || !loggedUserId) {
+    return res.status(400).json({ error: 'User ID and logged-in user ID are required' })
+  }
+  if (uid != loggedUserId) {
+    return res.status(400).json({ error: 'You dont have permission to delete this user.' })
+  }
+
+  pool.query('DELETE FROM users WHERE ID = ?', [uid], (error, results) => {
+    if (error) {
+      return res.status(500).json({ error: 'Database query error' })
+    }
+   if (results.affectedRows === 1) {
+      return res.status(200).json({ message: 'User deleted successfully' })
+    }
+    return res.status(200).json({ message: 'No delete action performed' })
+  })
+})
 
 
 
