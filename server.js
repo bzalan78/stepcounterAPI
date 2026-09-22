@@ -11,7 +11,9 @@ var pool = mysql.createPool({
   user: 'root',
   password: '',
   port: 3307,
-  database: 'stepcounter'
+  database: 'stepcounter',
+  timezone:'Europe/Budapest'
+
 
 })
 app.use(cors())
@@ -166,7 +168,46 @@ app.get('/users/:uid', (req, res) => {
     res.status(200).json({ results: user })
   })
 })
-//update profile
+//update profile(name,email)
+app.patch('/users/:uid', (req, res)=>{
+    const uid=req.params.uid
+    const {username, email, luid}=req.body
+
+    if(!uid||!username||!email||!luid){
+      return res.status(400).json({error: "Missing req fields."})
+    }
+    
+    if(uid!=luid){
+      return res.status(400).json({error: "Not your account."})
+    }
+
+    pool.query('SELECT * FROM users WHERE ID=?',[uid], (error, results) => {
+      if(error){
+        return res.status(500).json({error: 'Database query error.'})
+      }
+      if (results.length === 0) {
+      return res.status(400).json({ error: 'User not found' })
+    }
+    if((username==results[0].name)&&(email==results[0].email)){
+      return res.status(200).json({ message: 'No update occured' });
+    }
+    pool.query('SELECT * FROM users WHERE email=? AND ID<>?',[email,uid],(error,results2)=>{
+      if(error){
+        return res.status(500).json({error: 'Database query error.'})
+      }
+      if(results2.length>0){
+        return res.status(400).json({ error: 'email already used.' })
+      }
+      pool.query('UPDATE users SET name=?,email=?, updated_at=CURRENT_TIMESTAMP WHERE ID=?',[username,email,uid],(error,results)=> {
+        if (error){
+           return res.status(500).json({error: 'Database query error.'})
+        }
+        return res.status(200).json({ message: 'User updated succesfully' });
+      })
+    })
+  })
+})
+
 
 //delete profile
 app.delete('/users/:uid', (req, res) => {
@@ -210,20 +251,67 @@ app.delete('/users/:uid', (req, res) => {
 
 
 //get all users
-app.get('/admin/users', (_req, res) => {
-  pool.query('SELECT * FROM users', (error, results) => {
+app.post('/admin/users', (req, res) => {
+  const luid=req.body.luid
+  if(!luid){
+     return res.status(400).json({ error: 'Missing required fields' })
+  }
+  pool.query('SELECT * FROM users WHERE ID=?', [luid],(error, results1) => {
     if (error) {
-      return res.status(500).json({ error: 'Internal server error' })
+      return res.status(500).json({ error })
     }
-    else{
-      res.status(200).json(results)
-    }
+   if(results1.length==0){
+     return res.status(400).json({ error: 'User with this id doesnt exist.' })
+  
+   }
+    if(results1[0].role!='admin'){
+     return res.status(400).json({ error: 'You dont have premission.' })
+  
+   }
+   pool.query('SELECT * FROM users ',(error, results1) => {
+      if (error){
+        return res.status(500).json({ error: 'Database query error' })
+      }
+      return res.status(200).json({ results1})
+   })
    
   })
 })
 
 //deny user
+app.patch('/admin/status',(req,res)=>{
+  const {uid,luid}=req.body;
+  if(!uid||!luid){
+    return res.status(400).json({ error: 'Missing required fields' })
+  }
+pool.query('SELECT * FROM users WHERE ID=?',[luid],(error,results)=>{
+  if (error){
+      return res.status(500).json({ error:'Database query error' })
+    }
+    if(results.length==0){
+      return res.status(400).json({ error: 'No user with this ID' })
+    }
+    if(results[0].role!='admin'){
+       return res.status(400).json({ error: 'No premission to change user status.' })
+    }
 
+
+  pool.query('SELECT * FROM users WHERE ID=?')[uid], (error, results) =>{
+    if (error){
+      return res.status(500).json({ error:'Database query error' })
+    }
+    if(results.length==0){
+      return res.status(400).json({ error: 'No user with this ID' })
+    }
+     pool.query('UPDATE users SET is_active=not is_active WHERE ID=?')[uid], (error, results2) =>{
+      if(error){
+        return res.status(500).json({ error:'Database query error' })
+      }
+      return res.status(200).json({ message: 'User status changed!' })
+     }
+  }
+})
+})
 //statistics
 
 app.listen(port, () => {
