@@ -268,11 +268,11 @@ app.post('/admin/users', (req, res) => {
      return res.status(400).json({ error: 'You dont have premission.' })
   
    }
-   pool.query('SELECT * FROM users ',(error, results1) => {
+   pool.query('SELECT * FROM users ',(error, results) => {
       if (error){
         return res.status(500).json({ error: 'Database query error' })
       }
-      return res.status(200).json({ results1})
+      return res.status(200).json({ results})
    })
    
   })
