@@ -211,6 +211,7 @@ app.patch('/users/:uid', (req, res)=>{
 
 //delete profile
 app.delete('/users/:uid', (req, res) => {
+
   const uid=req.params.uid
   const loggedUserId=req.body.luid
   if (!uid || !loggedUserId) {
@@ -239,13 +240,59 @@ app.delete('/users/:uid', (req, res) => {
 
 
 //create step
+app.post('/steps/:uid',(req,res)=>{
+  const {luid,newstep,date}=req.body
+ 
+  let today=new Date()
+  
+  if(!luid|| !newstep|| !date){
+      return res.status(400).json({ error: 'All fields are required' })
+  }
+   if(newstep<0){
+       return res.status(400).json({ error: 'Invalid stepcount.' })
+    }
+   if(new Date(date)>today){
+    return res.status(400).json({ error: 'Cant add future date.' })
+   }
+
+   pool.query('SELECT * FROM steps WHERE user_id = ? AND date=?', [luid,date], (error, results) => {
+    console.log(results)
+    if(error){
+       return res.status(500).json({ error: 'Database query error.' })
+    }
+    
+      
+    pool.query('INSERT INTO steps (user_id,step_count,date) VALUES (?, ?, ?)',[luid,newstep,date] ,(error,results)=>{
+       if (error) {
+                return res.status(500).json({ error: 'Internal server error' })
+            }
+        if(affectedRows==0){
+          return res.status(200).json({ message: 'No change added' })
+        }
+            return res.status(200).json({ message: 'Steps added.' })
+        })
+    })
+    
+   })
+   
+    
+    
+  
+
+
 
 //get step
-
+app.get('/steps/:uid',(req,res)=>{
+  pool.query('SELECT * FROM steps WHERE user_id = ?')
+})
 //update step
-
+app.patch('/steps/:stepID',(req,res)=>{
+  const luid=req.body.luid
+})
 //delete step
-
+app.delete('/steps/:stepID',(req,res)=>{
+  const luid=req.body.luid
+})
 
 //admin endpoint
 
