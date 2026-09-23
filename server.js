@@ -260,13 +260,16 @@ app.post('/steps/:uid',(req,res)=>{
     if(error){
        return res.status(500).json({ error: 'Database query error.' })
     }
+    if(results.length!=0){
+      return res.status(500).json({ error: 'Date already exists' })
+    }
     
       
     pool.query('INSERT INTO steps (user_id,step_count,date) VALUES (?, ?, ?)',[luid,newstep,date] ,(error,results)=>{
        if (error) {
                 return res.status(500).json({ error: 'Internal server error' })
             }
-        if(affectedRows==0){
+        if(results.affectedRows==0){
           return res.status(200).json({ message: 'No change added' })
         }
             return res.status(200).json({ message: 'Steps added.' })
@@ -282,12 +285,27 @@ app.post('/steps/:uid',(req,res)=>{
 
 
 //get step
-app.get('/steps/:uid',(req,res)=>{
-  pool.query('SELECT * FROM steps WHERE user_id = ?')
+app.post('/steps/:uid',(req,res)=>{
+  const luid=req.body.luid
+  const uid=req.params.uid
+  if(luid!=uid){
+    return res.status(400).json({ error: 'Cant get others users steps.' })
+  }
+
+  pool.query('SELECT * FROM steps WHERE user_id = ?',[luid] ,(error,results)=>{
+     if (error) {
+      return res.status(500).json({ error: 'Database query error' })
+    }
+    if (results.length == 0) {
+      console.log(results)
+      return res.status(404).json({ error: 'No steps avaliable' })
+    }
+     return res.status(200).json({ results: results })
+  })
 })
 //update step
 app.patch('/steps/:stepID',(req,res)=>{
-  const luid=req.body.luid
+  
 })
 //delete step
 app.delete('/steps/:stepID',(req,res)=>{
